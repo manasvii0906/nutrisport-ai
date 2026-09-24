@@ -1,6 +1,19 @@
 // ===== pages/dashboard.js =====
 // Calculates BMI + estimated daily nutrition targets, renders the dashboard.
-
+async function fetchTargetsFromPython(profile) {
+  try {
+    const response = await fetch('http://127.0.0.1:5000/api/calculate-targets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profile)
+    });
+    if (!response.ok) throw new Error('Server error');
+    return await response.json();
+  } catch (err) {
+    console.warn('Python backend not reachable — using local JS calculation instead.', err);
+    return null;
+  }
+}
 function calculateBMR(profile) {
   // Mifflin-St Jeor Equation (widely used, reasonably accurate estimate)
   const { weight, height, age, gender } = profile;
@@ -58,7 +71,7 @@ function calculateNutritionTargets(profile) {
   return { calories, protein, carbs, fat, fiber, waterLiters };
 }
 
-function renderDashboard() {
+async function renderDashboard()  {
   const container = document.getElementById('page-dashboard');
   const profile = Storage.getProfile();
 
@@ -74,7 +87,7 @@ function renderDashboard() {
 
   const bmi = calculateBMI(profile.weight, profile.height);
   const bmiCategory = getBMICategory(bmi);
-  const targets = calculateNutritionTargets(profile);
+  const targets = (await fetchTargetsFromPython(profile)) || calculateNutritionTargets(profile);
 
   container.innerHTML = `
     <div class="dashboard-grid">
